@@ -4,30 +4,39 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.OPENAI_API_KEY,
 });
 
-export const generateResponse = async (userQuery: string, relevantSummaries: string[]): Promise<string> => {
-    const relevantHistory = relevantSummaries.join('\n');
+export const generateResponse = async (
+      userQuery: string,
+      relevantSummaries: string[]
+    ): Promise<string> => {
+      const context = relevantSummaries
+        .map((s, i) => `[Article ${i + 1}]: ${s}`)
+        .join('\n\n');
 
-    const userPrompt = `
-User: ${userQuery}
+      const systemPrompt = `You are a knowledgeable financial news assistant specializing in S&P 500 stocks and market analysis.
+      Your job is to answer questions about stocks, market trends, and financial news based on the provided context articles.
+      Always be concise, accurate, and cite specific details from the articles when available.
+      If the context doesn't contain enough information to answer fully, say so clearly.`;
 
-Below are relevant information that you must read and synthesize to give an answer to the user's question above.
-${relevantHistory}
+      const userPrompt = `User question: ${userQuery}
 
-You (always in first person):
-`;
+      Relevant news articles for context:
+      ${context}
 
-    const completion = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            { role: 'user', content: userPrompt },
-        ],
-    });
+      Please provide a clear, helpful answer based on the articles above.`;
 
-    const aiResponse = completion.choices[0].message?.content || '';
+      const completion = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                      ],
+              max_tokens: 600,
+              temperature: 0.3,
+      });
 
-    return aiResponse;
+      const aiResponse = completion.choices[0].message?.content || 'I was unable to generate a response.';
+      return aiResponse;
 };
