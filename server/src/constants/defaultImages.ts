@@ -1,12 +1,16 @@
+// Image URLs are served from the backend public folder.
+// Uses BACKEND_URL env var for production, falls back to Railway URL.
+const BACKEND_URL = process.env.BACKEND_URL || 'https://stockchatbackend-production.up.railway.app';
+
 export const DEFAULT_NEWS_IMAGES = [
-    'http://localhost:3000/news1.jpg',
-    'http://localhost:3000/news2.jpg',
-    'http://localhost:3000/news3.jpg',
-    'http://localhost:3000/news4.jpg',
-    'http://localhost:3000/news5.jpg',
-    'http://localhost:3000/news6.jpg',
-    'http://localhost:3000/news7.jpg',
-    'http://localhost:3000/news8.jpg',
-    'http://localhost:3000/news9.jpg',
-    'http://localhost:3000/news10.jpg'
+    `${BACKEND_URL}/news1.jpg`,
+    `${BACKEND_URL}/news2.jpg`,
+    `${BACKEND_URL}/news3.jpg`,
+    `${BACKEND_URL}/news4.jpg`,
+    `${BACKEND_URL}/news5.jpg`,
+    `${BACKEND_URL}/news6.jpg`,
+    `${BACKEND_URL}/news7.jpg`,
+    `${BACKEND_URL}/news8.jpg`,
+    `${BACKEND_URL}/news9.jpg`,
+    `${BACKEND_URL}/news10.jpg`,
 ];
