@@ -3,14 +3,14 @@ import { DEFAULT_NEWS_IMAGES } from '../constants/defaultImages';
 import pool from '../config/db';
 
 function getRandomImage(): () => string {
-    const usedImages = new Set();
+    const usedImages = new Set<string>();
 
     return function getUniqueRandomImage(): string {
         if (usedImages.size === DEFAULT_NEWS_IMAGES.length) {
-            usedImages.clear(); // if all images are used, clear the set
+            usedImages.clear();
         }
 
-        let randomImage;
+        let randomImage: string;
         do {
             const randomIndex = Math.floor(Math.random() * DEFAULT_NEWS_IMAGES.length);
             randomImage = DEFAULT_NEWS_IMAGES[randomIndex];
@@ -40,11 +40,11 @@ export const getNewsEventsFromDB = async (companyName: string) => {
     try {
         const result = await client.query(
             `
-                SELECT id, date, link, category, headline
+                SELECT id, date, link, category, headline, short_description
                 FROM news
-                WHERE headline LIKE $1 OR short_description LIKE $1
+                WHERE headline ILIKE $1 OR short_description ILIKE $1
                 ORDER BY date DESC
-                    LIMIT 20
+                LIMIT 20
             `,
             [`%${companyName}%`]
         );
@@ -61,12 +61,15 @@ export const getLatestNewsFromDB = async () => {
     const client = await pool.connect();
     try {
         const result = await client.query(
-            `SELECT id, date, link, category, headline
+            `SELECT id, date, link, category, headline, short_description
             FROM news
             ORDER BY date DESC
             LIMIT 40`
         );
         return addImagesToNews(result.rows);
+    } catch (error) {
+        console.error('Error fetching latest news from DB:', error);
+        throw error;
     } finally {
         client.release();
     }

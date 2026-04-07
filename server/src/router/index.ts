@@ -6,6 +6,7 @@ import stockIndustryRoutes from './stockIndustryRouters';
 import stockMinMaxCompanyRoutes from './stockMinMaxCompanyRouters';
 import stockSimilarCompaniesRoutes from './stockSimilarCompaniesRouters';
 import similarNewsRoutes from "./similarNewsRouters";
+import adminRoutes from "./adminRouters";
 
 const router = express.Router();
 
@@ -16,5 +17,6 @@ router.use('/stocks-industry', stockIndustryRoutes);
 router.use('/stocks-min-max-company', stockMinMaxCompanyRoutes);
 router.use('/stocks-similar-companies', stockSimilarCompaniesRoutes);
 router.use('/similar-news', similarNewsRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;
