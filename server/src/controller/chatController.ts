@@ -47,42 +47,25 @@ export const createChat: RequestHandler = async (req, res) => {
         }
         await userChats.save();
 
-        const response = await queryRAG(text);
-        console.log("RAG Response:", {
-            success: !!response.data,
-            answer: response.data?.answer || "No answer",
-            responseDetails: response.data, // Log full response data
-        });
-
-        if (response.data?.answer) {
-            await Chat.updateOne(
-                { _id: savedChat._id, userId: USER_ID },
-                {
-                    $push: {
-                        history: {
-                            role: "model",
-                            parts: [{ text: response.data.answer }]
-                        }
-                    }
-                }
-            );
-            console.log("Chat history updated with model response");
-        }
-
-        console.log("Chat creation completed successfully:", {
-            chatId: savedChat._id.toString(),
-            userQuery: text,
-            modelResponse: response.data?.answer || "No answer",
-            historyLength: 2, // Initial query + response
-        });
-
+        // Return immediately so the frontend can navigate to the chat
         res.status(201).send(savedChat._id.toString());
+
+        // Process RAG in background
+        queryRAG(text)
+            .then(async (response) => {
+                const answer = response.data?.answer;
+                if (answer) {
+                    await Chat.updateOne(
+                        { _id: savedChat._id, userId: USER_ID },
+                        { $push: { history: { role: "model", parts: [{ text: answer }] } } }
+                    );
+                    console.log("Chat updated with RAG response:", savedChat._id.toString());
+                }
+            })
+            .catch((err) => console.error("Background RAG error:", err));
+
     } catch (err) {
-        console.error("Error in createChat:", {
-            error: err,
-            userQuery: text,
-            userId: USER_ID,
-        });
+        console.error("Error in createChat:", err);
         res.status(500).send("Error creating chat!");
     }
 };
@@ -150,22 +133,21 @@ export const updateChat: RequestHandler = async (req, res) => {
             }
         );
 
-        const response = await queryRAG(question);
-        const answer = response.data?.answer || "No answer";
-
-        await Chat.updateOne(
-            { _id: req.params.id, userId: USER_ID },
-            {
-                $push: {
-                    history: {
-                        role: "model",
-                        parts: [{ text: answer }]
-                    }
-                },
-            }
-        );
-
+        // Return immediately so the frontend stops showing the loader
         res.status(200).send("ok");
+
+        // Process RAG in background
+        queryRAG(question)
+            .then(async (response) => {
+                const answer = response.data?.answer || "No answer";
+                await Chat.updateOne(
+                    { _id: req.params.id, userId: USER_ID },
+                    { $push: { history: { role: "model", parts: [{ text: answer }] } } }
+                );
+                console.log("Chat updated with RAG response:", req.params.id);
+            })
+            .catch((err) => console.error("Background RAG error:", err));
+
     } catch (err) {
         console.error(err);
         res.status(500).send("Error adding conversation!");
