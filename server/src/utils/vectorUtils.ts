@@ -1,9 +1,5 @@
 import pool from '../config/db';
 import { QueryResult } from 'pg';
-import { pipeline, env } from '@xenova/transformers';
-
-// Cache dir so the model persists within the same Railway instance session
-env.cacheDir = '/tmp/xenova-cache';
 
 // all-MiniLM-L6-v2 produces 384-dimensional embeddings (quantized model is ~23 MB)
 const EMBEDDING_DIMENSIONS = 384;
@@ -13,6 +9,9 @@ let _pipe: any = null;
 async function getEmbeddingPipeline() {
     if (!_pipe) {
         console.log('[Embeddings] Loading Xenova/all-MiniLM-L6-v2 (first run: ~23 MB download)...');
+        // Dynamic import required because @xenova/transformers is an ES Module
+        const { pipeline, env } = await import('@xenova/transformers');
+        env.cacheDir = '/tmp/xenova-cache';
         _pipe = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
             quantized: true,
         });
