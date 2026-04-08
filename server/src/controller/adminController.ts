@@ -11,7 +11,7 @@ export const getDbStatus = async (req: Request, res: Response) => {
         const newsCnt = await client.query('SELECT COUNT(*) FROM news');
         const zeroEmbCnt = await client.query(
             `SELECT COUNT(*) FROM news WHERE embedding IS NULL OR embedding = $1::vector`,
-            [`[${Array(768).fill(0).join(',')}]`]
+            [`[${Array(384).fill(0).join(',')}]`]
         );
 
         // Check MongoDB connection state
