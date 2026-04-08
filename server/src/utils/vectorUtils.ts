@@ -9,8 +9,10 @@ let _pipe: any = null;
 async function getEmbeddingPipeline() {
     if (!_pipe) {
         console.log('[Embeddings] Loading Xenova/all-MiniLM-L6-v2 (first run: ~23 MB download)...');
-        // Dynamic import required because @xenova/transformers is an ES Module
-        const { pipeline, env } = await import('@xenova/transformers');
+        // Use new Function() to prevent TypeScript (CJS target) from
+        // converting import() → require(), which fails on ES Modules.
+        const xenovaModule = await (new Function('return import("@xenova/transformers")')() as Promise<any>);
+        const { pipeline, env } = xenovaModule;
         env.cacheDir = '/tmp/xenova-cache';
         _pipe = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
             quantized: true,
