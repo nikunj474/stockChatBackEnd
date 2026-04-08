@@ -6,7 +6,7 @@ const router = express.Router();
 // GET /api/admin/status — returns row counts for all tables
 router.get('/status', getDbStatus);
 
-// POST /api/admin/generate-embeddings — generates real DistilBERT embeddings for all news
+// POST /api/admin/generate-embeddings — regenerates all news embeddings using OpenAI
 router.post('/generate-embeddings', generateNewsEmbeddings);
 
 export default router;

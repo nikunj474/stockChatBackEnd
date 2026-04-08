@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import pool from '../config/db';
 import { initEmbeddingModel, transformTextToVector } from '../utils/vectorUtils';
+import mongoose from 'mongoose';
 
 export const getDbStatus = async (req: Request, res: Response) => {
     const client = await pool.connect();
@@ -13,8 +14,17 @@ export const getDbStatus = async (req: Request, res: Response) => {
             [`[${Array(768).fill(0).join(',')}]`]
         );
 
+        // Check MongoDB connection state
+        const mongoState = mongoose.connection.readyState;
+        const mongoStates: Record<number, string> = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+
         res.json({
             status: 'ok',
+            mongodb: {
+                state: mongoStates[mongoState] || 'unknown',
+                readyState: mongoState,
+                uri_set: !!process.env.MONGO_URI,
+            },
             tables: {
                 company: parseInt(companyCnt.rows[0].count),
                 stocks: parseInt(stocksCnt.rows[0].count),
