@@ -50,19 +50,23 @@ export const createChat: RequestHandler = async (req, res) => {
         // Return immediately so the frontend can navigate to the chat
         res.status(201).send(savedChat._id.toString());
 
-        // Process RAG in background
+        // Process RAG in background — always write a model message so the frontend stops polling
         queryRAG(text)
             .then(async (response) => {
-                const answer = response.data?.answer;
-                if (answer) {
-                    await Chat.updateOne(
-                        { _id: savedChat._id, userId: USER_ID },
-                        { $push: { history: { role: "model", parts: [{ text: answer }] } } }
-                    );
-                    console.log("Chat updated with RAG response:", savedChat._id.toString());
-                }
+                const answer = response.data?.answer || "I was unable to generate a response. Please try again.";
+                await Chat.updateOne(
+                    { _id: savedChat._id, userId: USER_ID },
+                    { $push: { history: { role: "model", parts: [{ text: answer }] } } }
+                );
+                console.log("Chat updated with RAG response:", savedChat._id.toString());
             })
-            .catch((err) => console.error("Background RAG error:", err));
+            .catch(async (err) => {
+                console.error("Background RAG error:", err);
+                await Chat.updateOne(
+                    { _id: savedChat._id, userId: USER_ID },
+                    { $push: { history: { role: "model", parts: [{ text: "Sorry, I encountered an error processing your request. Please try again." }] } } }
+                );
+            });
 
     } catch (err) {
         console.error("Error in createChat:", err);
@@ -136,17 +140,23 @@ export const updateChat: RequestHandler = async (req, res) => {
         // Return immediately so the frontend stops showing the loader
         res.status(200).send("ok");
 
-        // Process RAG in background
+        // Process RAG in background — always write a model message so the frontend stops polling
         queryRAG(question)
             .then(async (response) => {
-                const answer = response.data?.answer || "No answer";
+                const answer = response.data?.answer || "I was unable to generate a response. Please try again.";
                 await Chat.updateOne(
                     { _id: req.params.id, userId: USER_ID },
                     { $push: { history: { role: "model", parts: [{ text: answer }] } } }
                 );
                 console.log("Chat updated with RAG response:", req.params.id);
             })
-            .catch((err) => console.error("Background RAG error:", err));
+            .catch(async (err) => {
+                console.error("Background RAG error:", err);
+                await Chat.updateOne(
+                    { _id: req.params.id, userId: USER_ID },
+                    { $push: { history: { role: "model", parts: [{ text: "Sorry, I encountered an error processing your request. Please try again." }] } } }
+                );
+            });
 
     } catch (err) {
         console.error(err);

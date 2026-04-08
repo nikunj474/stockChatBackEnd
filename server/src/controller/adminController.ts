@@ -44,26 +44,16 @@ export const generateNewsEmbeddings = async (req: Request, res: Response) => {
 };
 
 async function generateEmbeddingsInBackground() {
-    console.log('[Embeddings] Starting background embedding generation...');
+    console.log('[Embeddings] Starting background embedding generation via OpenAI...');
     const client = await pool.connect();
 
     try {
-        // Initialize embedding model
-        console.log('[Embeddings] Loading DistilBERT model...');
-        await initEmbeddingModel();
-        console.log('[Embeddings] Model loaded.');
-
-        // Fetch all news that have zero or null embeddings
-        const zeroVector = `[${Array(768).fill(0).join(',')}]`;
+        // Fetch ALL news to regenerate with OpenAI embeddings (replacing old DistilBERT ones)
         const news = await client.query(
-            `SELECT id, headline, short_description 
-             FROM news 
-             WHERE embedding IS NULL OR embedding = $1::vector
-             ORDER BY id`,
-            [zeroVector]
+            `SELECT id, headline, short_description FROM news ORDER BY id`
         );
 
-        console.log(`[Embeddings] Found ${news.rows.length} articles needing embeddings.`);
+        console.log(`[Embeddings] Regenerating embeddings for ${news.rows.length} articles using OpenAI...`);
 
         let updated = 0;
         for (const article of news.rows) {
@@ -86,7 +76,7 @@ async function generateEmbeddingsInBackground() {
             }
         }
 
-        console.log(`[Embeddings] Complete! Updated ${updated} news articles with real embeddings.`);
+        console.log(`[Embeddings] Complete! Updated ${updated} news articles with OpenAI embeddings.`);
     } catch (err) {
         console.error('[Embeddings] Fatal error:', err);
     } finally {

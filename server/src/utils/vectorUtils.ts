@@ -1,77 +1,52 @@
 import pool from '../config/db';
 import { QueryResult } from 'pg';
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
 
-let embeddingModel: any;
-let pipeline: any;
+dotenv.config();
 
-// initialize the pipeline
-const initPipeline = async () => {
-    const transformers = await import('@xenova/transformers');
-    pipeline = transformers.pipeline;
-};
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// initialize the embedding model
+// Match the existing pgvector column dimension in the DB
+const EMBEDDING_DIMENSIONS = 768;
+
+// No-op kept for backward compatibility with any callers
 export const initEmbeddingModel = async () => {
-    if (!pipeline) {
-        await initPipeline();
-    }
-
-    if (!embeddingModel) {
-        // using pipeline to load the distilbert model
-        embeddingModel = await pipeline('feature-extraction', 'Xenova/distilbert-base-uncased', {
-            pooling: 'cls',          // 使用 CLS token
-            normalize: true,
-            revision: 'default',
-            // progress_callback: (progress: number) => {
-            //     console.log(`Model loading progress: ${Math.round(progress * 100)}%`);
-            // },
-        });
-        console.log('Embedding model loaded successfully.');
-    }
+    console.log('Embedding model: using OpenAI text-embedding-3-small (no local model needed).');
 };
 
-// transfer text to vector
+// Convert text to a 768-dim vector using OpenAI
 export const transformTextToVector = async (text: string): Promise<number[]> => {
-    if (!embeddingModel) {
-        await initEmbeddingModel();
-    }
-
-    // get the embedding of the text
-    // console.log('Transforming text to vector...');
-    const output = await embeddingModel(text, {
-        pooling: 'cls',
-        normalize: true
+    const response = await openai.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: text,
+        dimensions: EMBEDDING_DIMENSIONS,
     });
-    console.log('Text transformed to vector successfully.');
-
-    const vector = Array.from(output.data).map(value => Number(value));
-
+    const vector = response.data[0].embedding;
+    console.log(`Text embedded via OpenAI: ${vector.length} dims`);
     return vector;
 };
 
-// search for similar news by vector
+// Search for similar news articles by cosine similarity
 export const findSimilarNews = async (queryVector: number[]): Promise<any[]> => {
     const client = await pool.connect();
     try {
         const vectorString = `[${queryVector.join(',')}]`;
-
-        console.log('Vector length:', queryVector.length); // Debug length
-        console.log('Vector sample:', queryVector.slice(0, 5)); // Debug first 5 elements
         const result: QueryResult = await client.query(
             `
-        SELECT 
-            id,
-            headline as title,
-            COALESCE(short_description, 'No description') as summary,
-            date,
-            embedding <=> $1 as distance
-        FROM news
-        ORDER BY embedding <=> $1
-        LIMIT 5
-        `,
+            SELECT
+                id,
+                headline as title,
+                COALESCE(short_description, 'No description') as summary,
+                date,
+                embedding <=> $1 as distance
+            FROM news
+            ORDER BY embedding <=> $1
+            LIMIT 5
+            `,
             [vectorString]
         );
-        console.log('Query results:', result.rows);
+        console.log(`Similar news found: ${result.rows.length} results`);
         return result.rows;
     } catch (error) {
         console.error('Error during vector search:', error);
@@ -85,10 +60,9 @@ export const findSimilarNewsWithUrls = async (queryVector: number[]): Promise<an
     const client = await pool.connect();
     try {
         const vectorString = `[${queryVector.join(',')}]`;
-
         const result: QueryResult = await client.query(
             `
-            SELECT 
+            SELECT
                 id,
                 headline as title,
                 COALESCE(short_description, 'No description') as summary,
@@ -98,7 +72,6 @@ export const findSimilarNewsWithUrls = async (queryVector: number[]): Promise<an
                 embedding <=> $1 as distance
             FROM news
             ORDER BY embedding <=> $1
-            
             LIMIT 20
             `,
             [vectorString]
