@@ -3,8 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Uses Groq (free tier) via OpenAI-compatible API — no billing required.
+// Get a free key at https://console.groq.com and set GROQ_API_KEY in Railway.
 const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: 'https://api.groq.com/openai/v1',
 });
 
 export const generateResponse = async (
@@ -28,7 +31,7 @@ export const generateResponse = async (
       Please provide a clear, helpful answer based on the articles above.`;
 
       const completion = await openai.chat.completions.create({
-              model: 'gpt-4o-mini',
+              model: 'llama-3.1-8b-instant',
               messages: [
                   { role: 'system', content: systemPrompt },
                   { role: 'user', content: userPrompt },
